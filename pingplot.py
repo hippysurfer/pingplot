@@ -1,4 +1,4 @@
-from queue import Queue, Empty
+from Queue import Queue, Empty
 from threading import Thread
 from subprocess import Popen, PIPE
 import matplotlib.pyplot as plt
@@ -8,16 +8,22 @@ import time
 import sys
 
 
-def enqueue_output(out, queue):
-    for line in iter(out.readline, b''):
-        try:
-            l = float(line.decode('utf-8').split(' ')[7].split('=')[1])
-            data = (datetime.now(), l)
-            queue.put(data)
-            print(data)
-        except:
-            pass
-    out.close()
+def enqueue_output(out, err, queue):
+    try:
+        for line in iter(out.readline, b''):
+            try:
+                l = float(line.decode('utf-8').split(' ')[6].split('=')[1])
+                data = (datetime.now(), l)
+                queue.put(data)
+            except Exception, e:
+                print(line)
+                print(e)
+                pass
+    except:
+        print("Error reading from ping",err.readlines())
+    finally:
+        out.close()
+        err.close()
 
 
 
@@ -25,10 +31,10 @@ def enqueue_output(out, queue):
 if __name__ == "__main__":
     host = sys.argv[1]
 
-    p = Popen(['ping', host], stdout=PIPE,
-              bufsize=1, close_fds=True)
+    p = Popen(['ping', '-i', '0.001', host], stdout=PIPE,
+              stderr=PIPE, bufsize=1, close_fds=True)
     q = Queue()
-    t = Thread(target=enqueue_output, args=(p.stdout, q))
+    t = Thread(target=enqueue_output, args=(p.stdout, p.stderr, q))
     t.daemon = True  # thread dies with the program
     t.start()
 
@@ -55,15 +61,4 @@ if __name__ == "__main__":
         ax1.fmt_xdata = mdates.DateFormatter('%H-%m-%s')
         fig.canvas.draw()
         fig.canvas.flush_events()
-        print("here")
 
-    # # read line without blocking
-    # while True:
-    #     try:
-    #         line = q.get_nowait() # or q.get(timeout=.1)
-    #     except Empty:
-    #         pass
-    #         #print('no output yet')
-    #     else: # got line
-    #         # ... do something with line
-    #         print(line)
