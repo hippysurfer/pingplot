@@ -1,4 +1,8 @@
-from Queue import Queue, Empty
+try:
+    from Queue import Queue, Empty
+except ImportError:
+    from queue import Queue, Empty
+
 from threading import Thread
 from subprocess import Popen, PIPE
 import matplotlib.pyplot as plt
@@ -18,20 +22,16 @@ def enqueue_output(out, err, queue):
             except Exception, e:
                 print(line)
                 print(e)
-                pass
     except:
-        print("Error reading from ping",err.readlines())
+        print("Error reading from ping", err.readlines())
     finally:
         out.close()
         err.close()
 
-
-
-
 if __name__ == "__main__":
-    host = sys.argv[1]
+    ping_args = sys.argv[1:]
 
-    p = Popen(['ping', '-i', '0.001', host], stdout=PIPE,
+    p = Popen(['ping']+ping_args, stdout=PIPE,
               stderr=PIPE, bufsize=1, close_fds=True)
     q = Queue()
     t = Thread(target=enqueue_output, args=(p.stdout, p.stderr, q))
@@ -61,4 +61,3 @@ if __name__ == "__main__":
         ax1.fmt_xdata = mdates.DateFormatter('%H-%m-%s')
         fig.canvas.draw()
         fig.canvas.flush_events()
-
