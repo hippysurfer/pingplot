@@ -7,8 +7,8 @@ from threading import Thread
 from subprocess import Popen, PIPE
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+import numpy as np
 from datetime import datetime
-import time
 import sys
 
 
@@ -19,6 +19,7 @@ def enqueue_output(out, err, queue):
                 l = float(line.decode('utf-8').split(' ')[6].split('=')[1])
                 data = (datetime.now(), l)
                 queue.put(data)
+                print(repr(data))
             except Exception, e:
                 print(line)
                 print(e)
@@ -38,26 +39,39 @@ if __name__ == "__main__":
     t.daemon = True  # thread dies with the program
     t.start()
 
-    data = []
+    xdata = np.array([])
+    ydata = np.array([])
 
     def get_data():
+        global xdata
+        global ydata
         while True:
             try:
-                data.append(q.get_nowait())
+                x, y = q.get_nowait()
+                xdata = np.append(xdata, [x,])
+                ydata = np.append(ydata, [y,])
             except Empty:
-                return data
+                return (xdata, ydata)
 
     plt.ion()
     fig = plt.figure()
     ax1 = fig.add_subplot(1, 1, 1)
+    xa, = ax1.plot([], [], 'ro')
+    plt.title('Ping times')
+    plt.xlabel('Time')
+    plt.ylabel('ICMP Response (ms)')
+    plt.show()
 
+    l = None
     while True:
-        time.sleep(10)
-        x, y = zip(*get_data())
+        x, y = get_data()
         print(len(x))
-        ax1.clear()
-        ax1.plot(x, y, 'ro')
+        #ax1.clear()
+        ax1.plot(x, y, 'r+')
+        if l:
+            l.remove()
+        mean = y.mean()
+        l = ax1.axhline(mean, color='b', linestyle='dashed', linewidth=2)
         fig.autofmt_xdate()
-        ax1.fmt_xdata = mdates.DateFormatter('%H-%m-%s')
-        fig.canvas.draw()
-        fig.canvas.flush_events()
+        ax1.fmt_xdata = mdates.DateFormatter('%H-%m-%S')
+        plt.pause(1)
